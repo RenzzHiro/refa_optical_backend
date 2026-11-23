@@ -1,11 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/healthz", "destination": "/api/index?__vercel_path=healthz" },
-    { "source": "/readyz", "destination": "/api/index?__vercel_path=readyz" },
-    { "source": "/api/:path*", "destination": "/api/index?__vercel_path=api/:path*" }
+    { "source": "/healthz", "destination": "/api/index.go?__vercel_path=healthz" },
+    { "source": "/readyz", "destination": "/api/index.go?__vercel_path=readyz" },
+    { "source": "/api/:path*", "destination": "/api/index.go?__vercel_path=api/:path*" }
   ]
 }
+
 
 
 
