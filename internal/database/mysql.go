@@ -38,6 +38,17 @@ type columnDefinition struct {
 }
 
 func Open(dsn, caCertPath string) (*gorm.DB, error) {
+	return open(dsn, caCertPath, true)
+}
+
+// Connect opens the database without running schema migrations or seed logic.
+// Use this in serverless production deployments where the schema is managed
+// separately from request handling.
+func Connect(dsn, caCertPath string) (*gorm.DB, error) {
+	return open(dsn, caCertPath, false)
+}
+
+func open(dsn, caCertPath string, migrate bool) (*gorm.DB, error) {
 	caPEM := embeddedDatabaseCA
 	if caCertPath != "" {
 		if configuredCA, readErr := os.ReadFile(caCertPath); readErr == nil {
@@ -45,6 +56,19 @@ func Open(dsn, caCertPath string) (*gorm.DB, error) {
 		} else {
 			log.Printf("database CA certificate at %q unavailable; using embedded TiDB CA: %v", caCertPath, readErr)
 		}
+	}
+	mysqlConfig, err := mysqlDriver.ParseDSN(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse database DSN: %w", err)
+	}
+	if mysqlConfig.Timeout == 0 {
+		mysqlConfig.Timeout = 8 * time.Second
+	}
+	if mysqlConfig.ReadTimeout == 0 {
+		mysqlConfig.ReadTimeout = 20 * time.Second
+	}
+	if mysqlConfig.WriteTimeout == 0 {
+		mysqlConfig.WriteTimeout = 20 * time.Second
 	}
 	if len(caPEM) > 0 {
 		roots := x509.NewCertPool()
@@ -55,13 +79,9 @@ func Open(dsn, caCertPath string) (*gorm.DB, error) {
 		if err := mysqlDriver.RegisterTLSConfig(tlsName, &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}); err != nil {
 			return nil, fmt.Errorf("configure database TLS: %w", err)
 		}
-		mysqlConfig, err := mysqlDriver.ParseDSN(dsn)
-		if err != nil {
-			return nil, fmt.Errorf("parse database DSN: %w", err)
-		}
 		mysqlConfig.TLSConfig = tlsName
-		dsn = mysqlConfig.FormatDSN()
 	}
+	dsn = mysqlConfig.FormatDSN()
 	db, err := gorm.Open(gormmysql.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Warn), DisableForeignKeyConstraintWhenMigrating: true})
 	if err != nil {
 		return nil, err
@@ -75,6 +95,9 @@ func Open(dsn, caCertPath string) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	if err = sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("ping mysql: %w", err)
+	}
+	if !migrate {
+		return db, nil
 	}
 	if err = dropReferencesToOrders(db); err != nil {
 		return nil, fmt.Errorf("prepare order foreign keys: %w", err)

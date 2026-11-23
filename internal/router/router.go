@@ -11,6 +11,7 @@ func New(cfg config.Config, api *handlers.Server) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery(), middleware.CORS(cfg.AllowedOrigins))
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/readyz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ready"}) })
 	v1 := r.Group("/api/v1")
 	authRoutes := v1.Group("/auth")
 	authRoutes.POST("/register", api.Register)

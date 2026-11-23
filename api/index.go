@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -19,6 +20,16 @@ var (
 // Handler is the Vercel Functions entrypoint. The application is initialized
 // once per warm function instance, then reused for subsequent requests.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	route := r.URL.Query().Get("__vercel_path")
+	if route == "" && r.URL.Path == "/healthz" {
+		route = "healthz"
+	}
+	if route == "healthz" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		return
+	}
 	initOnce.Do(func() {
 		cfg := config.Load()
 		apiHandler, initErr = app.New(cfg)
@@ -33,7 +44,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// vercel.json rewrites customer-facing paths through this single function.
 	// The original query string is preserved for catalog filters and searches.
-	if route := r.URL.Query().Get("__vercel_path"); route != "" {
+	if route != "" {
 		query := r.URL.Query()
 		query.Del("__vercel_path")
 		r.URL.Path = "/" + strings.TrimLeft(route, "/")

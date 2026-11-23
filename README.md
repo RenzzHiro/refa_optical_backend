@@ -116,6 +116,8 @@ Jangan kirim Server Key ke browser. Integrasi memakai Snap Redirect URL dari res
 
 Backend ini menyediakan `api/index.go` sebagai Vercel Function. `vercel.json` meneruskan `/api/*` dan `/healthz` ke handler Gin; Go Functions dideteksi otomatis oleh Vercel, `go run ./cmd/api` tetap dipakai untuk menjalankan server lokal.
 
+Pada Vercel, aplikasi hanya membuka koneksi database dan tidak menjalankan migrasi atau seed. Skema database produksi harus sudah disiapkan. `/healthz` adalah liveness check yang tidak menunggu database; gunakan `/readyz` untuk memastikan inisialisasi aplikasi dan koneksi database berhasil.
+
 Di pengaturan proyek Vercel, set **Root Directory** ke root repository backend. Tambahkan environment variables produksi yang dibutuhkan aplikasi, minimal `DATABASE_DSN`, `DATABASE_CA_CERT_PATH` dapat dikosongkan karena sertifikat CA TiDB sudah disematkan; path CA khusus yang dapat dibaca tetap bisa digunakan sebagai override, `JWT_SECRET` (minimal 32 karakter), dan `GIN_MODE=release`. Tambahkan juga `CORS_ORIGINS` dan `FRONTEND_URL` dengan URL frontend produksi, `COOKIE_SECURE=true`, serta kredensial Midtrans. Jangan masukkan `.env` ke Git.
 
 Untuk upload resep yang persisten, gunakan `STORAGE_DRIVER=s3` beserta `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, dan `S3_USE_SSL`. Penyimpanan lokal pada Vercel hanya memakai `/tmp` dan bersifat sementara.

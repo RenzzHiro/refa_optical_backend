@@ -12,6 +12,7 @@ import (
 	"github.com/refa-optical/backend/internal/payment"
 	"github.com/refa-optical/backend/internal/router"
 	"github.com/refa-optical/backend/internal/storage"
+	"gorm.io/gorm"
 )
 
 // New initializes the API dependencies and returns the HTTP handler used by
@@ -23,11 +24,22 @@ func New(cfg config.Config) (http.Handler, error) {
 	if cfg.GinMode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	db, err := database.Open(cfg.DatabaseDSN, cfg.DatabaseCAPath)
+	var db *gorm.DB
+	var err error
+	if os.Getenv("VERCEL") == "1" {
+		// The production schema already exists; migrations and catalog seeding
+		// are intentionally kept out of Vercel function startup.
+		db, err = database.Connect(cfg.DatabaseDSN, cfg.DatabaseCAPath)
+	} else {
+		db, err = database.Open(cfg.DatabaseDSN, cfg.DatabaseCAPath)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if err = database.SeedCatalog(db); err != nil {
+	if os.Getenv("VERCEL") != "1" {
+		err = database.SeedCatalog(db)
+	}
+	if err != nil {
 		return nil, err
 	}
 	store, err := buildStorage(cfg)
