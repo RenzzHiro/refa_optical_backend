@@ -111,3 +111,13 @@ Jangan kirim Server Key ke browser. Integrasi memakai Snap Redirect URL dari res
 - Ongkos kirim untuk sementara `0` dan belum diintegrasikan.
 
 
+
+## Deploy ke Vercel (Go Functions)
+
+Backend ini menyediakan `api/index.go` sebagai Vercel Function. `vercel.json` meneruskan `/api/*` dan `/healthz` ke handler Gin; `go run ./cmd/api` tetap dipakai untuk menjalankan server lokal.
+
+Di pengaturan proyek Vercel, set **Root Directory** ke root repository backend. Tambahkan environment variables produksi yang dibutuhkan aplikasi, minimal `DATABASE_DSN`, `DATABASE_CA_CERT_PATH=certs/isrgrootx1.pem`, `JWT_SECRET` (minimal 32 karakter), dan `GIN_MODE=release`. Tambahkan juga `CORS_ORIGINS` dan `FRONTEND_URL` dengan URL frontend produksi, `COOKIE_SECURE=true`, serta kredensial Midtrans. Jangan masukkan `.env` ke Git.
+
+Untuk upload resep yang persisten, gunakan `STORAGE_DRIVER=s3` beserta `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, dan `S3_USE_SSL`. Penyimpanan lokal pada Vercel hanya memakai `/tmp` dan bersifat sementara.
+
+Setelah mengatur env, lakukan redeploy. Cek `https://<domain-backend>/healthz`, lalu cek Vercel Runtime Logs jika Function mengembalikan 503/500. Runtime Go Vercel berstatus Beta.

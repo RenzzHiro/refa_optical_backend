@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/healthz", "destination": "/api?__vercel_path=healthz" },
+    { "source": "/api/:path*", "destination": "/api?__vercel_path=api/:path*" }
+  ],
+  "functions": {
+    "api/index.go": {
+      "maxDuration": 30,
+      "includeFiles": "certs/**"
+    }
+  }
+}
