@@ -3,6 +3,7 @@ package database
 import (
 	"crypto/tls"
 	"crypto/x509"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -17,6 +18,9 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+//go:embed isrgrootx1.pem
+var embeddedDatabaseCA []byte
+
 type uniqueRow struct {
 	ID    string `gorm:"column:id"`
 	Value string `gorm:"column:value"`
@@ -27,18 +31,22 @@ type foreignKeyRow struct {
 	ConstraintName string `gorm:"column:constraint_name"`
 }
 type columnDefinition struct {
-	Nullable          string `gorm:"column:is_nullable"`
-	Extra             string `gorm:"column:extra"`
-	DataType          string `gorm:"column:data_type"`
+	Nullable           string `gorm:"column:is_nullable"`
+	Extra              string `gorm:"column:extra"`
+	DataType           string `gorm:"column:data_type"`
 	CharacterMaxLength int64  `gorm:"column:character_maximum_length"`
 }
 
 func Open(dsn, caCertPath string) (*gorm.DB, error) {
+	caPEM := embeddedDatabaseCA
 	if caCertPath != "" {
-		caPEM, err := os.ReadFile(caCertPath)
-		if err != nil {
-			return nil, fmt.Errorf("read database CA certificate: %w", err)
+		if configuredCA, readErr := os.ReadFile(caCertPath); readErr == nil {
+			caPEM = configuredCA
+		} else {
+			log.Printf("database CA certificate at %q unavailable; using embedded TiDB CA: %v", caCertPath, readErr)
 		}
+	}
+	if len(caPEM) > 0 {
 		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(caPEM) {
 			return nil, fmt.Errorf("database CA certificate contains no valid PEM certificates")
