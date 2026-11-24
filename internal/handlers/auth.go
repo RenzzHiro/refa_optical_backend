@@ -90,8 +90,16 @@ func (s *Server) issueTokens(c *gin.Context, user models.User, status int) {
 	c.JSON(status, gin.H{"data": authResponse{AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(s.Config.AccessTokenTTL.Seconds()), User: authUser{ID: user.ID, Name: user.Name, Email: user.Email, Role: user.Role}}})
 }
 func (s *Server) setRefreshCookie(c *gin.Context, value string) {
-	http.SetCookie(c.Writer, &http.Cookie{Name: "refa_refresh", Value: value, Path: "/api/v1/auth", HttpOnly: true, Secure: s.Config.CookieSecure, SameSite: http.SameSiteLaxMode, Expires: time.Now().Add(s.Config.RefreshTokenTTL), MaxAge: int(s.Config.RefreshTokenTTL.Seconds())})
+	http.SetCookie(c.Writer, &http.Cookie{Name: "refa_refresh", Value: value, Path: "/api/v1/auth", HttpOnly: true, Secure: s.Config.CookieSecure, SameSite: s.refreshCookieSameSite(), Expires: time.Now().Add(s.Config.RefreshTokenTTL), MaxAge: int(s.Config.RefreshTokenTTL.Seconds())})
 }
+
+func (s *Server) refreshCookieSameSite() http.SameSite {
+	if s.Config.CookieSecure {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteLaxMode
+}
+
 func (s *Server) Refresh(c *gin.Context) {
 	cookie, err := c.Cookie("refa_refresh")
 	if err != nil {
@@ -123,7 +131,7 @@ func (s *Server) Logout(c *gin.Context) {
 		now := time.Now()
 		_ = s.DB.Model(&models.RefreshToken{}).Where("token_hash = ? AND revoked_at IS NULL", hash).Update("revoked_at", now).Error
 	}
-	http.SetCookie(c.Writer, &http.Cookie{Name: "refa_refresh", Value: "", Path: "/api/v1/auth", HttpOnly: true, Secure: s.Config.CookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+	http.SetCookie(c.Writer, &http.Cookie{Name: "refa_refresh", Value: "", Path: "/api/v1/auth", HttpOnly: true, Secure: s.Config.CookieSecure, SameSite: s.refreshCookieSameSite(), MaxAge: -1, Expires: time.Unix(1, 0)})
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "Berhasil keluar."}})
 }
 func (s *Server) Me(c *gin.Context) {
