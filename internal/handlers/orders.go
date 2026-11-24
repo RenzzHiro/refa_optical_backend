@@ -70,9 +70,6 @@ func (s *Server) CreateOrder(c *gin.Context) {
 			}
 			linePrice := product.Price + lens.Price
 			order.Subtotal += linePrice * int64(line.Quantity)
-			if product.Category == "minus" || lens.RequiresPrescription {
-				order.RequiresPrescription = true
-			}
 			lensID := lens.ID
 			order.Items = append(order.Items, models.OrderItem{ProductID: product.ID, LensID: &lensID, Name: product.Name, LensName: lens.Name, LensPrice: lens.Price, Image: product.Image, Quantity: line.Quantity, Price: linePrice, ColorName: line.ColorName, Category: product.Category})
 		}

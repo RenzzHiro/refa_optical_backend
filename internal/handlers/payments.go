@@ -23,10 +23,6 @@ func (s *Server) CreatePayment(c *gin.Context) {
 		s.fail(c, 409, "already_paid", "Pesanan sudah dibayar.")
 		return
 	}
-	if order.RequiresPrescription && order.Prescription == nil {
-		s.fail(c, 409, "prescription_required", "Unggah foto resep sebelum memulai pembayaran.")
-		return
-	}
 	if s.Config.MidtransServerKey == "" {
 		s.fail(c, 503, "payment_unconfigured", "MIDTRANS_SERVER_KEY belum dikonfigurasi.")
 		return
