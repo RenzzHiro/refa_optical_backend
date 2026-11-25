@@ -248,6 +248,18 @@ func (s *Server) UpdateAdminOrder(c *gin.Context) {
 		if (input.Status == "processing" || input.Status == "completed") && order.PaymentStatus != "paid" {
 			return fmt.Errorf("cannot advance unpaid order")
 		}
+		if order.Status == input.Status {
+			return fmt.Errorf("order status is unchanged")
+		}
+		if order.Status == "completed" {
+			return fmt.Errorf("completed order is final")
+		}
+		if order.Status == "processing" && input.Status != "completed" {
+			return fmt.Errorf("processing order can only be completed")
+		}
+		if order.Status == "awaiting_payment" && input.Status == "completed" {
+			return fmt.Errorf("order must be processed before completion")
+		}
 		if input.Status == "cancelled" && order.PaymentStatus == "paid" {
 			return fmt.Errorf("paid order cancellation requires refund")
 		}
